@@ -1,0 +1,14 @@
+node_modules/
+.keystore/
+.env
+*.log
+.wallets/
+dist/
+*.tsbuildinfo
+.logs/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.env.local
+.env.*.local

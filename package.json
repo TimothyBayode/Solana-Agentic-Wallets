@@ -1,0 +1,25 @@
+{
+  "name": "solana-agent-wallet",
+  "version": "1.0.0",
+  "description": "Autonomous AI agent wallets on Solana devnet",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "demo": "ts-node src/demo.ts",
+    "test": "ts-node tests/test-suite.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@solana/spl-token": "^0.1.8",
+    "@solana/web3.js": "^1.95.3",
+    "bs58": "^6.0.0",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "winston": "^3.14.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}

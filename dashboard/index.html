@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Agent Wallet Monitor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+
+  :root {
+    --bg: #080b0f;
+    --surface: #0d1117;
+    --surface2: #131920;
+    --border: #1e2d3d;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --green: #00ff88;
+    --red: #ff3d71;
+    --yellow: #ffd60a;
+    --text: #e2eaf4;
+    --muted: #4a6070;
+    --font-mono: 'Space Mono', monospace;
+    --font-display: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border: 1px solid var(--green);
+    border-radius: 100px;
+    font-size: 11px;
+    color: var(--green);
+  }
+
+  .pulse {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.6;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+
+  .stat-sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+  /* Main grid */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .panel-title {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .panel-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(0,229,255,0.1);
+    color: var(--accent);
+  }
+
+  /* Agent cards */
+  .agents-list { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+  .agent-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    background: var(--surface2);
+    transition: border-color 0.2s;
+  }
+
+  .agent-card:hover { border-color: var(--accent); }
+
+  .agent-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .agent-id {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  .agent-status {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+
+  .status-running { background: rgba(0,255,136,0.12); color: var(--green); }
+  .status-idle    { background: rgba(255,214,10,0.12); color: var(--yellow); }
+  .status-stopped { background: rgba(74,96,112,0.2); color: var(--muted); }
+  .status-error   { background: rgba(255,61,113,0.12); color: var(--red); }
+
+  .agent-pubkey {
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-family: var(--font-mono);
+  }
+
+  .agent-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .metric { text-align: center; }
+  .metric-val { font-size: 14px; color: var(--text); font-weight: 700; }
+  .metric-lab { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
+
+  /* Balance bar */
+  .balance-bar {
+    margin-top: 10px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .balance-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  /* Activity feed */
+  .activity-feed { padding: 0; max-height: 340px; overflow-y: auto; }
+
+  .activity-feed::-webkit-scrollbar { width: 4px; }
+  .activity-feed::-webkit-scrollbar-track { background: var(--surface); }
+  .activity-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .feed-item {
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .feed-time { font-size: 10px; color: var(--muted); white-space: nowrap; }
+
+  .feed-content { }
+  .feed-agent { font-size: 10px; color: var(--accent); margin-bottom: 2px; }
+  .feed-msg { font-size: 11px; color: var(--text); }
+
+  .feed-type {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .type-TRADE    { background: rgba(0,229,255,0.15); color: var(--accent); }
+  .type-HOLD     { background: rgba(74,96,112,0.2); color: var(--muted); }
+  .type-REBALANCE{ background: rgba(124,58,237,0.2); color: #a78bfa; }
+  .type-SKIP     { background: rgba(255,214,10,0.1); color: var(--yellow); }
+  .type-OBSERVE  { background: rgba(74,96,112,0.2); color: var(--muted); }
+
+  /* Pool panel */
+  .pool-stats { padding: 20px; }
+
+  .pool-price {
+    font-family: var(--font-display);
+    font-size: 42px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -2px;
+    margin-bottom: 4px;
+  }
+
+  .pool-price-label { font-size: 11px; color: var(--muted); margin-bottom: 20px; }
+
+  .pool-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+  .pool-metric {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+  }
+
+  .pool-metric-val { font-size: 16px; font-weight: 700; color: var(--text); }
+  .pool-metric-lab { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* Price chart (simple CSS bars) */
+  .price-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 60px;
+    padding: 16px 18px 0;
+  }
+
+  .chart-bar {
+    flex: 1;
+    background: rgba(0,229,255,0.2);
+    border-radius: 2px 2px 0 0;
+    transition: height 0.5s ease, background 0.3s;
+    min-height: 4px;
+  }
+
+  .chart-bar.up   { background: rgba(0,255,136,0.35); }
+  .chart-bar.down { background: rgba(255,61,113,0.35); }
+
+  /* Bottom full-width panel */
+  .tx-panel { margin-bottom: 20px; }
+
+  .tx-table { width: 100%; border-collapse: collapse; }
+
+  .tx-table th {
+    text-align: left;
+    padding: 10px 18px;
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .tx-table td {
+    padding: 10px 18px;
+    font-size: 11px;
+    border-bottom: 1px solid rgba(30,45,61,0.5);
+  }
+
+  .tx-table tr:hover td { background: rgba(0,229,255,0.03); }
+
+  .tx-sig {
+    font-family: var(--font-mono);
+    color: var(--accent);
+    font-size: 10px;
+  }
+
+  .chip {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .chip-success { background: rgba(0,255,136,0.12); color: var(--green); }
+  .chip-fail    { background: rgba(255,61,113,0.12); color: var(--red); }
+
+  footer {
+    text-align: center;
+    padding: 20px;
+    color: var(--muted);
+    font-size: 10px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">AGENT<span>WALLET</span>.monitor</div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <span style="font-size:11px;color:var(--muted)">Solana Devnet</span>
+      <div class="status-pill"><div class="pulse"></div>LIVE SIMULATION</div>
+    </div>
+  </header>
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Active Agents</div>
+      <div class="stat-value" id="stat-agents">3</div>
+      <div class="stat-sub">on devnet</div>
+    </div>
+    <div class="stat-card" style="--accent: var(--green)">
+      <div class="stat-label">Total Transactions</div>
+      <div class="stat-value" id="stat-txs" style="color:var(--green)">0</div>
+      <div class="stat-sub">confirmed on-chain</div>
+    </div>
+    <div class="stat-card" style="--accent: #a78bfa">
+      <div class="stat-label">Total Volume</div>
+      <div class="stat-value" id="stat-vol" style="color:#a78bfa">0.000</div>
+      <div class="stat-sub">SOL traded</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">SOL/USDC Price</div>
+      <div class="stat-value" id="stat-price">$150</div>
+      <div class="stat-sub" id="price-change">devnet oracle</div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="main-grid">
+
+    <!-- Agents Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Agent Wallets</div>
+        <div class="panel-badge">3 ACTIVE</div>
+      </div>
+      <div class="agents-list" id="agents-list"></div>
+    </div>
+
+    <!-- Pool + Activity -->
+    <div style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- Pool State -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">DeFi Pool State</div>
+          <div class="panel-badge">SIMULATED</div>
+        </div>
+        <div class="price-chart" id="price-chart"></div>
+        <div class="pool-stats">
+          <div class="pool-price" id="pool-price">$150.00</div>
+          <div class="pool-price-label">SOL / USDC · devnet oracle · updates every 3s</div>
+          <div class="pool-metrics">
+            <div class="pool-metric">
+              <div class="pool-metric-val" id="pool-sol">1000.0</div>
+              <div class="pool-metric-lab">SOL Reserve</div>
+            </div>
+            <div class="pool-metric">
+              <div class="pool-metric-val" id="pool-usdc">150,000</div>
+              <div class="pool-metric-lab">USDC Reserve</div>
+            </div>
+            <div class="pool-metric">
+              <div class="pool-metric-val" id="pool-vol">0</div>
+              <div class="pool-metric-lab">24h Volume (SOL)</div>
+            </div>
+            <div class="pool-metric">
+              <div class="pool-metric-val" id="pool-liq">300,000</div>
+              <div class="pool-metric-lab">Total Liquidity</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="panel tx-panel">
+    <div class="panel-header">
+      <div class="panel-title">Live Activity Feed</div>
+      <div class="panel-badge" id="feed-count">0 EVENTS</div>
+    </div>
+    <div class="activity-feed" id="activity-feed">
+      <div style="padding:24px;text-align:center;color:var(--muted)">
+        Waiting for agent activity...
+      </div>
+    </div>
+  </div>
+
+  <!-- Transaction Log -->
+  <div class="panel tx-panel">
+    <div class="panel-header">
+      <div class="panel-title">Transaction Log</div>
+      <div class="panel-badge" id="tx-count">0 TXs</div>
+    </div>
+    <table class="tx-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Agent</th>
+          <th>Action</th>
+          <th>Amount</th>
+          <th>Signature</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tx-tbody">
+        <tr><td colspan="6" style="color:var(--muted);padding:20px 18px">No transactions yet</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    SOLANA AGENT WALLET — DEVNET PROTOTYPE · Built for Solana Agent Wallet Hackathon · Open source
+  </footer>
+</div>
+
+<script>
+const LIVE_STATE_URL = "../.logs/dashboard-state.json";
+
+let agents = [
+  {
+    id: "trader-alpha",
+    strategy: "aggressive",
+    status: "running",
+    pubkey: generateFakePubkey(),
+    balance: 0.095,
+    maxBalance: 0.1,
+    cycles: 0,
+    lastAction: "—",
+    transactions: 0,
+  },
+  {
+    id: "trader-beta",
+    strategy: "conservative",
+    status: "running",
+    pubkey: generateFakePubkey(),
+    balance: 0.098,
+    maxBalance: 0.1,
+    cycles: 0,
+    lastAction: "—",
+    transactions: 0,
+  },
+  {
+    id: "lp-gamma",
+    strategy: "liquidity",
+    status: "running",
+    pubkey: generateFakePubkey(),
+    balance: 0.097,
+    maxBalance: 0.1,
+    cycles: 0,
+    lastAction: "—",
+    transactions: 0,
+  },
+];
+
+let pool = {
+  price: 150,
+  solReserve: 1000,
+  usdcReserve: 150000,
+  volume: 0,
+  liquidity: 300000,
+};
+
+const priceHistory = Array(20).fill(150).map((v) => v + (Math.random() - 0.5) * 5);
+let totalTxs = 0;
+let totalVolume = 0;
+let liveMode = false;
+let simulationStarted = false;
+const simulationHandles = [];
+
+function generateFakePubkey() {
+  const chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  return Array.from({ length: 44 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+}
+
+function generateFakeSig() {
+  const chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  return Array.from({ length: 88 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+}
+
+function fmtTime(d) {
+  return d.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function renderAgents() {
+  const el = document.getElementById("agents-list");
+  el.innerHTML = agents.map((a) => `
+    <div class="agent-card">
+      <div class="agent-top">
+        <div class="agent-id">${a.id}</div>
+        <div class="agent-status status-${a.status}">${String(a.status).toUpperCase()}</div>
+      </div>
+      <div class="agent-pubkey">${a.pubkey.slice(0, 20)}...${a.pubkey.slice(-8)}</div>
+      <div class="agent-metrics">
+        <div class="metric">
+          <div class="metric-val">${Number(a.balance).toFixed(4)}</div>
+          <div class="metric-lab">SOL Balance</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val">${a.cycles}</div>
+          <div class="metric-lab">Cycles</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val">${a.transactions}</div>
+          <div class="metric-lab">Txs</div>
+        </div>
+      </div>
+      <div class="balance-bar">
+        <div class="balance-fill" style="width:${Math.min(100, ((a.balance / Math.max(a.maxBalance || 0.1, 0.0001)) * 100))}%"></div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderPool() {
+  document.getElementById("pool-price").textContent = `$${pool.price.toFixed(2)}`;
+  document.getElementById("stat-price").textContent = `$${pool.price.toFixed(0)}`;
+  document.getElementById("pool-sol").textContent = pool.solReserve.toFixed(1);
+  document.getElementById("pool-usdc").textContent = pool.usdcReserve.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  document.getElementById("pool-vol").textContent = pool.volume.toFixed(3);
+  document.getElementById("pool-liq").textContent = pool.liquidity.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function renderChart() {
+  const el = document.getElementById("price-chart");
+  const min = Math.min(...priceHistory);
+  const max = Math.max(...priceHistory);
+  const range = max - min || 1;
+  el.innerHTML = priceHistory.map((v, i) => {
+    const pct = ((v - min) / range) * 90 + 5;
+    const dir = i > 0 ? (v >= priceHistory[i - 1] ? "up" : "down") : "";
+    return `<div class="chart-bar ${dir}" style="height:${pct}%"></div>`;
+  }).join("");
+}
+
+function renderStats() {
+  document.getElementById("stat-agents").textContent = String(agents.length);
+  document.getElementById("stat-txs").textContent = String(totalTxs);
+  document.getElementById("stat-vol").textContent = totalVolume.toFixed(3);
+}
+
+function renderActivityFeed(items) {
+  const el = document.getElementById("activity-feed");
+  if (!items.length) {
+    el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted)">Waiting for agent activity...</div>`;
+    document.getElementById("feed-count").textContent = "0 EVENTS";
+    return;
+  }
+
+  const ordered = [...items].reverse().slice(0, 30);
+  el.innerHTML = ordered.map((item) => `
+    <div class="feed-item">
+      <div class="feed-time">${fmtTime(new Date(item.timestamp || Date.now()))}</div>
+      <div class="feed-content">
+        <div class="feed-agent">${item.agentId}</div>
+        <div class="feed-msg">${item.message}</div>
+      </div>
+      <div class="feed-type type-${item.type}">${item.type}</div>
+    </div>
+  `).join("");
+
+  document.getElementById("feed-count").textContent = `${ordered.length} EVENTS`;
+}
+
+function renderTransactions(rows) {
+  const tbody = document.getElementById("tx-tbody");
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted);padding:20px 18px">No transactions yet</td></tr>`;
+    document.getElementById("tx-count").textContent = "0 TXs";
+    return;
+  }
+
+  const ordered = [...rows].reverse().slice(0, 20);
+  tbody.innerHTML = ordered.map((row) => `
+    <tr>
+      <td>${fmtTime(new Date(row.timestamp || Date.now()))}</td>
+      <td>${row.agentId}</td>
+      <td><span class="chip chip-success">${row.action}</span></td>
+      <td>${Number(row.amount || 0).toFixed(4)} SOL</td>
+      <td class="tx-sig">${row.signature.slice(0, 16)}...${row.signature.slice(-8)}</td>
+      <td><span class="chip ${row.success ? "chip-success" : "chip-fail"}">${row.success ? "CONFIRMED" : "FAILED"}</span></td>
+    </tr>
+  `).join("");
+
+  document.getElementById("tx-count").textContent = `${rows.length} TXs`;
+}
+
+function updatePriceChange() {
+  const prev = priceHistory[priceHistory.length - 2] || pool.price;
+  const change = pool.price - prev;
+  const el = document.getElementById("price-change");
+  if (change >= 0) {
+    el.style.color = "var(--green)";
+    el.textContent = `▲ +${change.toFixed(2)}`;
+  } else {
+    el.style.color = "var(--red)";
+    el.textContent = `▼ ${change.toFixed(2)}`;
+  }
+}
+
+function applyLiveState(data) {
+  if (!data || !Array.isArray(data.agents) || !data.pool) return;
+
+  agents = data.agents.map((a) => ({
+    id: a.id,
+    strategy: a.strategy || "unknown",
+    status: a.status || "stopped",
+    pubkey: a.pubkey,
+    balance: Number(a.balance || 0),
+    maxBalance: Number(a.maxBalance || 0.1),
+    cycles: Number(a.cycles || 0),
+    lastAction: a.lastAction || "—",
+    transactions: Number(a.transactions || 0),
+  }));
+
+  pool = {
+    price: Number(data.pool.price || 0),
+    solReserve: Number(data.pool.solReserve || 0),
+    usdcReserve: Number(data.pool.usdcReserve || 0),
+    volume: Number(data.pool.volume24h || 0),
+    liquidity: Number(data.pool.totalLiquidity || 0),
+  };
+
+  totalTxs = Number(data.stats?.totalTxs || 0);
+  totalVolume = Number(data.stats?.totalVolume || 0);
+
+  priceHistory.push(pool.price);
+  if (priceHistory.length > 20) priceHistory.shift();
+
+  renderAgents();
+  renderPool();
+  renderChart();
+  renderStats();
+  updatePriceChange();
+  renderActivityFeed(Array.isArray(data.activities) ? data.activities : []);
+  renderTransactions(Array.isArray(data.transactions) ? data.transactions : []);
+
+  const badge = document.querySelector(".status-pill");
+  if (badge) badge.innerHTML = `<div class="pulse"></div>LIVE FROM INDEX.TS`;
+}
+
+function addActivity(agentId, type, msg) {
+  const el = document.getElementById("activity-feed");
+  if (el.querySelector("div")) el.innerHTML = "";
+
+  const item = document.createElement("div");
+  item.className = "feed-item";
+  item.innerHTML = `
+    <div class="feed-time">${fmtTime(new Date())}</div>
+    <div class="feed-content">
+      <div class="feed-agent">${agentId}</div>
+      <div class="feed-msg">${msg}</div>
+    </div>
+    <div class="feed-type type-${type}">${type}</div>
+  `;
+  el.insertBefore(item, el.firstChild);
+  if (el.children.length > 30) el.removeChild(el.lastChild);
+
+  document.getElementById("feed-count").textContent = `${el.children.length} EVENTS`;
+}
+
+function addTransaction(agentId, action, amount, sig, success) {
+  const tbody = document.getElementById("tx-tbody");
+  if (tbody.querySelector("td[colspan]")) tbody.innerHTML = "";
+
+  const row = document.createElement("tr");
+  row.innerHTML = `
+    <td>${fmtTime(new Date())}</td>
+    <td>${agentId}</td>
+    <td><span class="chip chip-success">${action}</span></td>
+    <td>${amount} SOL</td>
+    <td class="tx-sig">${sig.slice(0, 16)}...${sig.slice(-8)}</td>
+    <td><span class="chip ${success ? "chip-success" : "chip-fail"}">${success ? "CONFIRMED" : "FAILED"}</span></td>
+  `;
+  tbody.insertBefore(row, tbody.firstChild);
+  if (tbody.children.length > 20) tbody.removeChild(tbody.lastChild);
+
+  totalTxs++;
+  document.getElementById("tx-count").textContent = `${totalTxs} TXs`;
+}
+
+function simulateAgentCycle(agent) {
+  agent.cycles++;
+
+  const roll = Math.random();
+  const strategies = {
+    aggressive: { tradeProb: 0.75, skipProb: 0.1 },
+    conservative: { tradeProb: 0.33, skipProb: 0.2 },
+    liquidity: { tradeProb: 0.45, skipProb: 0.15 },
+  };
+
+  const strat = strategies[agent.strategy];
+  let action;
+
+  if (agent.balance < 0.005) {
+    action = "SKIP";
+    addActivity(agent.id, "SKIP", `Balance too low: ${agent.balance.toFixed(4)} SOL`);
+  } else if (roll < strat.tradeProb) {
+    const amount = +(0.001 + Math.random() * 0.002).toFixed(4);
+    action = agent.strategy === "liquidity" ? "REBALANCE" : "TRADE";
+    agent.balance = Math.max(0, agent.balance - amount);
+    agent.transactions++;
+    totalVolume += amount;
+    pool.volume += amount;
+    pool.solReserve += amount * 0.5;
+    pool.liquidity += amount * pool.price;
+
+    const sig = generateFakeSig();
+    const success = Math.random() > 0.05;
+    addActivity(agent.id, action, `${action === "TRADE" ? "Sent" : "Deposited"} ${amount} SOL → protocol`);
+    addTransaction(agent.id, action, amount, sig, success);
+  } else if (roll < strat.tradeProb + strat.skipProb) {
+    action = "HOLD";
+    addActivity(agent.id, "HOLD", `Strategy: hold position at ${agent.balance.toFixed(4)} SOL`);
+  } else {
+    action = agent.strategy === "liquidity" ? "OBSERVE" : "HOLD";
+    addActivity(agent.id, action, `Monitoring market. Pool ratio: ${(pool.solReserve / pool.liquidity * pool.price).toFixed(3)}`);
+  }
+
+  agent.lastAction = action;
+}
+
+function simulatePoolTick() {
+  const drift = (Math.random() - 0.48) * 1.5;
+  pool.price = Math.max(100, Math.min(250, pool.price + drift));
+  pool.solReserve += (Math.random() - 0.5) * 5;
+  pool.usdcReserve = pool.solReserve * pool.price;
+
+  priceHistory.push(pool.price);
+  if (priceHistory.length > 20) priceHistory.shift();
+  updatePriceChange();
+}
+
+function stopSimulationMode() {
+  while (simulationHandles.length) {
+    const id = simulationHandles.pop();
+    clearInterval(id);
+    clearTimeout(id);
+  }
+}
+
+function startSimulationMode() {
+  if (simulationStarted || liveMode) return;
+  simulationStarted = true;
+
+  renderAgents();
+  renderPool();
+  renderChart();
+  renderStats();
+  updatePriceChange();
+
+  agents.forEach((agent, i) => {
+    const id = setInterval(() => {
+      simulateAgentCycle(agent);
+      renderAgents();
+      renderStats();
+    }, 5000 + i * 1200);
+    simulationHandles.push(id);
+  });
+
+  const poolId = setInterval(() => {
+    simulatePoolTick();
+    renderPool();
+    renderChart();
+  }, 3000);
+  simulationHandles.push(poolId);
+
+  simulationHandles.push(setTimeout(() => addActivity("trader-alpha", "TRADE", "Agent initialized. Requesting devnet airdrop..."), 500));
+  simulationHandles.push(setTimeout(() => addActivity("trader-beta", "HOLD", "Agent initialized. Strategy: conservative"), 900));
+  simulationHandles.push(setTimeout(() => addActivity("lp-gamma", "OBSERVE", "Agent initialized. Monitoring pool ratio..."), 1300));
+}
+
+async function pollLiveState() {
+  try {
+    const res = await fetch(`${LIVE_STATE_URL}?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    applyLiveState(data);
+    if (!liveMode) {
+      liveMode = true;
+      stopSimulationMode();
+    }
+  } catch (err) {
+    if (!liveMode) startSimulationMode();
+  }
+}
+
+setInterval(pollLiveState, 2000);
+pollLiveState();
+</script>
+</body>
+</html>
